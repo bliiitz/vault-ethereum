@@ -15,5 +15,6 @@ dist
 **/solidity
 **/solidity/*
 **/modules
+local/
 
 

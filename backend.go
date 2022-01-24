@@ -60,7 +60,7 @@ func Backend(conf *logical.BackendConfig) (*PluginBackend, error) {
 	b.Backend = &framework.Backend{
 		Help: "",
 		Paths: framework.PathAppend(
-			configPaths(&b),
+			chainPaths(&b),
 			accountPaths(&b),
 			convertPaths(&b),
 			erc20Paths(&b),
