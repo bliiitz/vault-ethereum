@@ -239,10 +239,6 @@ func ConvertToUSD(amountInWei string) (decimal.Decimal, error) {
 }
 
 func (b *PluginBackend) pathConvertWrite(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-	_, err := b.configured(ctx, req)
-	if err != nil {
-		return nil, err
-	}
 
 	usdFrom := false
 	usdTo := false
@@ -307,10 +303,6 @@ func (b *PluginBackend) pathConvertWrite(ctx context.Context, req *logical.Reque
 }
 
 func (b *PluginBackend) pathTest(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-	_, err := b.configured(ctx, req)
-	if err != nil {
-		return nil, err
-	}
 
 	fileData := data.Get("file").(string)
 	return &logical.Response{

@@ -52,6 +52,10 @@ Return the balance for an address's ERC-20 holdings.
 `,
 			Fields: map[string]*framework.FieldSchema{
 				"name": {Type: framework.TypeString},
+				"chain": {
+					Type:        framework.TypeString,
+					Description: "The chain ID of the tx to sign.",
+				},
 				"contract": {
 					Type:        framework.TypeString,
 					Description: "The address of the ERC-20 token.",
@@ -72,6 +76,10 @@ Return the total supply for a ERC-20 token.
 `,
 			Fields: map[string]*framework.FieldSchema{
 				"name": {Type: framework.TypeString},
+				"chain": {
+					Type:        framework.TypeString,
+					Description: "The chain ID of the tx to sign.",
+				},
 				"contract": {
 					Type:        framework.TypeString,
 					Description: "The address of the ERC-20 token.",
@@ -93,6 +101,10 @@ Transfer some ERC-20 holdings to another address.
 `,
 			Fields: map[string]*framework.FieldSchema{
 				"name": {Type: framework.TypeString},
+				"chain": {
+					Type:        framework.TypeString,
+					Description: "The chain ID of the tx to sign.",
+				},
 				"contract": {
 					Type:        framework.TypeString,
 					Description: "The address of the ERC-20 token.",
@@ -123,6 +135,10 @@ Transfer some ERC-20 holdings from another address to this address.
 `,
 			Fields: map[string]*framework.FieldSchema{
 				"name": {Type: framework.TypeString},
+				"chain": {
+					Type:        framework.TypeString,
+					Description: "The chain ID of the tx to sign.",
+				},
 				"contract": {
 					Type:        framework.TypeString,
 					Description: "The address of the ERC-20 token.",
@@ -154,6 +170,10 @@ If this function is called again it overwrites the current allowance with _value
 `,
 			Fields: map[string]*framework.FieldSchema{
 				"name": {Type: framework.TypeString},
+				"chain": {
+					Type:        framework.TypeString,
+					Description: "The chain ID of the tx to sign.",
+				},
 				"contract": {
 					Type:        framework.TypeString,
 					Description: "The address of the ERC-20 token.",
@@ -178,10 +198,12 @@ If this function is called again it overwrites the current allowance with _value
 }
 
 func (b *PluginBackend) pathERC20BalanceOf(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-	config, err := b.configured(ctx, req)
+	chainName := data.Get("chain").(string)
+	chain, err := b.configured_chain(ctx, req, chainName)
 	if err != nil {
 		return nil, err
 	}
+
 	name := data.Get("name").(string)
 
 	accountJSON, err := readAccount(ctx, req, name)
@@ -193,7 +215,7 @@ func (b *PluginBackend) pathERC20BalanceOf(ctx context.Context, req *logical.Req
 		return nil, err
 	}
 
-	client, err := ethclient.Dial(config.getRPCURL())
+	client, err := ethclient.Dial(chain.getRPCURL())
 	if err != nil {
 		return nil, err
 	}
@@ -246,10 +268,13 @@ func (b *PluginBackend) pathERC20BalanceOf(ctx context.Context, req *logical.Req
 
 func (b *PluginBackend) pathERC20Transfer(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 	var tokens *big.Int
-	config, err := b.configured(ctx, req)
+
+	chainName := data.Get("chain").(string)
+	chain, err := b.configured_chain(ctx, req, chainName)
 	if err != nil {
 		return nil, err
 	}
+
 	name := data.Get("name").(string)
 
 	accountJSON, err := readAccount(ctx, req, name)
@@ -263,12 +288,7 @@ func (b *PluginBackend) pathERC20Transfer(ctx context.Context, req *logical.Requ
 
 	tokenAddress := common.HexToAddress(data.Get("contract").(string))
 
-	chainID := util.ValidNumber(config.ChainID)
-	if chainID == nil {
-		return nil, fmt.Errorf("invalid chain ID")
-	}
-
-	client, err := ethclient.Dial(config.getRPCURL())
+	client, err := ethclient.Dial(chain.getRPCURL())
 	if err != nil {
 		return nil, err
 	}
@@ -313,7 +333,7 @@ func (b *PluginBackend) pathERC20Transfer(ctx context.Context, req *logical.Requ
 		tokens = util.ValidNumber("0")
 	}
 
-	err = config.ValidAddress(transactionParams.Address)
+	err = chain.ValidAddress(transactionParams.Address)
 	if err != nil {
 		return nil, err
 	}
@@ -322,7 +342,9 @@ func (b *PluginBackend) pathERC20Transfer(ctx context.Context, req *logical.Requ
 		return nil, err
 	}
 	tokenAmount := util.TokenAmount(tokens.Int64(), decimals)
-	transactOpts, err := b.NewWalletTransactor(chainID, wallet, account)
+
+	bigChainID, _ := new(big.Int).SetString(chain.ChainID, 10)
+	transactOpts, err := b.NewWalletTransactor(bigChainID, wallet, account)
 	if err != nil {
 		return nil, err
 	}
@@ -360,12 +382,13 @@ func (b *PluginBackend) pathERC20Transfer(ctx context.Context, req *logical.Requ
 }
 
 func (b *PluginBackend) pathERC20TotalSupply(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-	config, err := b.configured(ctx, req)
+	chainName := data.Get("chain").(string)
+	chain, err := b.configured_chain(ctx, req, chainName)
 	if err != nil {
 		return nil, err
 	}
 
-	client, err := ethclient.Dial(config.getRPCURL())
+	client, err := ethclient.Dial(chain.getRPCURL())
 	if err != nil {
 		return nil, err
 	}
@@ -418,10 +441,13 @@ func (b *PluginBackend) pathERC20TotalSupply(ctx context.Context, req *logical.R
 
 func (b *PluginBackend) pathERC20Approve(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 	var tokens *big.Int
-	config, err := b.configured(ctx, req)
+	
+	chainName := data.Get("chain").(string)
+	chain, err := b.configured_chain(ctx, req, chainName)
 	if err != nil {
 		return nil, err
 	}
+
 	name := data.Get("name").(string)
 
 	accountJSON, err := readAccount(ctx, req, name)
@@ -434,12 +460,7 @@ func (b *PluginBackend) pathERC20Approve(ctx context.Context, req *logical.Reque
 	}
 	tokenAddress := common.HexToAddress(data.Get("contract").(string))
 
-	chainID := util.ValidNumber(config.ChainID)
-	if chainID == nil {
-		return nil, fmt.Errorf("invalid chain ID")
-	}
-
-	client, err := ethclient.Dial(config.getRPCURL())
+	client, err := ethclient.Dial(chain.getRPCURL())
 	if err != nil {
 		return nil, err
 	}
@@ -475,7 +496,7 @@ func (b *PluginBackend) pathERC20Approve(ctx context.Context, req *logical.Reque
 		return nil, err
 	}
 
-	err = config.ValidAddress(transactionParams.Address)
+	err = chain.ValidAddress(transactionParams.Address)
 	if err != nil {
 		return nil, err
 	}
@@ -493,7 +514,9 @@ func (b *PluginBackend) pathERC20Approve(ctx context.Context, req *logical.Reque
 		tokens = util.ValidNumber("0")
 	}
 	tokenAmount := util.TokenAmount(tokens.Int64(), decimals)
-	transactOpts, err := b.NewWalletTransactor(chainID, wallet, account)
+
+	bigChainID, _ := new(big.Int).SetString(chain.ChainID, 10)
+	transactOpts, err := b.NewWalletTransactor(bigChainID, wallet, account)
 	if err != nil {
 		return nil, err
 	}
@@ -531,10 +554,13 @@ func (b *PluginBackend) pathERC20Approve(ctx context.Context, req *logical.Reque
 }
 func (b *PluginBackend) pathERC20TransferFrom(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 	var tokens *big.Int
-	config, err := b.configured(ctx, req)
+	
+	chainName := data.Get("chain").(string)
+	chain, err := b.configured_chain(ctx, req, chainName)
 	if err != nil {
 		return nil, err
 	}
+
 	name := data.Get("name").(string)
 
 	accountJSON, err := readAccount(ctx, req, name)
@@ -548,12 +574,7 @@ func (b *PluginBackend) pathERC20TransferFrom(ctx context.Context, req *logical.
 
 	tokenAddress := common.HexToAddress(data.Get("contract").(string))
 
-	chainID := util.ValidNumber(config.ChainID)
-	if chainID == nil {
-		return nil, fmt.Errorf("invalid chain ID")
-	}
-
-	client, err := ethclient.Dial(config.getRPCURL())
+	client, err := ethclient.Dial(chain.getRPCURL())
 	if err != nil {
 		return nil, err
 	}
@@ -589,7 +610,7 @@ func (b *PluginBackend) pathERC20TransferFrom(ctx context.Context, req *logical.
 		return nil, err
 	}
 
-	err = config.ValidAddress(transactionParams.Address)
+	err = chain.ValidAddress(transactionParams.Address)
 	if err != nil {
 		return nil, err
 	}
@@ -607,7 +628,9 @@ func (b *PluginBackend) pathERC20TransferFrom(ctx context.Context, req *logical.
 		tokens = util.ValidNumber("0")
 	}
 	tokenAmount := util.TokenAmount(tokens.Int64(), decimals)
-	transactOpts, err := b.NewWalletTransactor(chainID, wallet, account)
+
+	bigChainID, _ := new(big.Int).SetString(chain.ChainID, 10)
+	transactOpts, err := b.NewWalletTransactor(bigChainID, wallet, account)
 	if err != nil {
 		return nil, err
 	}
