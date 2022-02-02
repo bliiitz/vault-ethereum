@@ -826,6 +826,7 @@ func (b *PluginBackend) pathSignTx(ctx context.Context, req *logical.Request, da
 			"gas_price":          transactionParams.GasPrice.String(),
 			"gas_limit":          strconv.FormatUint(transactionParams.GasLimit, 10),
 			"chain_id": 		  chain.ChainID,
+			"rpc_url":			  chain.RPC,
 		},
 	}, nil
 
