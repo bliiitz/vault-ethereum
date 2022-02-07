@@ -521,7 +521,7 @@ func (b *PluginBackend) NewWalletTransactor(chainID *big.Int, hdwallet *bip44.Wa
 			if address != account.Address {
 				return nil, errors.New("not authorized to sign this account")
 			}
-			signedTx, err := hdwallet.SignTx(*account, tx, chainID)
+			signedTx, err := hdwallet.SignTxEIP155(*account, tx, chainID)
 			if err != nil {
 				return nil, err
 			}
@@ -647,7 +647,7 @@ func (b *PluginBackend) pathTransfer(ctx context.Context, req *logical.Request, 
 	tx := types.NewTransaction(transactionParams.Nonce, *transactionParams.Address, transactionParams.Amount, transactionParams.GasLimit, transactionParams.GasPrice, txDataToSign)
 
 	bigChainID, _ := new(big.Int).SetString(chain.ChainID, 10)
-	signedTx, err := wallet.SignTx(*account, tx, bigChainID)
+	signedTx, err := wallet.SignTxEIP155(*account, tx, bigChainID)
 	if err != nil {
 		return nil, err
 	}
@@ -808,7 +808,7 @@ func (b *PluginBackend) pathSignTx(ctx context.Context, req *logical.Request, da
 	tx := types.NewTransaction(transactionParams.Nonce, *transactionParams.Address, transactionParams.Amount, transactionParams.GasLimit, transactionParams.GasPrice, txDataToSign)
 	bigChainID, _ := new(big.Int).SetString(chain.ChainID, 10)
 
-	signedTx, err := wallet.SignTx(*account, tx, bigChainID)
+	signedTx, err := wallet.SignTxEIP155(*account, tx, bigChainID)
 	if err != nil {
 		return nil, err
 	}
