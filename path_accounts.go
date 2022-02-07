@@ -517,7 +517,7 @@ func (b *PluginBackend) getData(client *ethclient.Client, fromAddress common.Add
 func (b *PluginBackend) NewWalletTransactor(chainID *big.Int, hdwallet *bip44.Wallet, account *accounts.Account) (*bind.TransactOpts, error) {
 	return &bind.TransactOpts{
 		From: account.Address,
-		Signer: func(signer types.Signer, address common.Address, tx *types.Transaction) (*types.Transaction, error) {
+		Signer: func(address common.Address, tx *types.Transaction) (*types.Transaction, error) {
 			if address != account.Address {
 				return nil, errors.New("not authorized to sign this account")
 			}
@@ -645,7 +645,7 @@ func (b *PluginBackend) pathTransfer(ctx context.Context, req *logical.Request, 
 	}
 
 	tx := types.NewTransaction(transactionParams.Nonce, *transactionParams.Address, transactionParams.Amount, transactionParams.GasLimit, transactionParams.GasPrice, txDataToSign)
-	
+
 	bigChainID, _ := new(big.Int).SetString(chain.ChainID, 10)
 	signedTx, err := wallet.SignTx(*account, tx, bigChainID)
 	if err != nil {

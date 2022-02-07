@@ -62,12 +62,9 @@ func Backend(conf *logical.BackendConfig) (*PluginBackend, error) {
 		Paths: framework.PathAppend(
 			chainPaths(&b),
 			accountPaths(&b),
-			convertPaths(&b),
-			erc20Paths(&b),
 		),
 		PathsSpecial: &logical.Paths{
 			Unauthenticated: []string{
-				"convert",
 				"test",
 			},
 			SealWrapStorage: []string{
