@@ -1,0 +1,24 @@
+{
+  "name": "@bliiitz/vault-ethereum-ethers-signer",
+  "version": "1.0.0",
+  "description": "Ethers signer interface to use vault-ethereum plugin",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bliiitz/vault-ethereum.git"
+  },
+  "keywords": [
+    "hashicorp",
+    "vault",
+    "ethers"
+  ],
+  "author": "Bliiitz",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/bliiitz/vault-ethereum/issues"
+  },
+  "homepage": "https://github.com/bliiitz/vault-ethereum#readme"
+}

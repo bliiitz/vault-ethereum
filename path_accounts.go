@@ -513,24 +513,6 @@ func (b *PluginBackend) getData(client *ethclient.Client, fromAddress common.Add
 	}, nil
 }
 
-// NewWalletTransactor is used with Token contracts
-func (b *PluginBackend) NewWalletTransactor(chainID *big.Int, hdwallet *bip44.Wallet, account *accounts.Account) (*bind.TransactOpts, error) {
-	return &bind.TransactOpts{
-		From: account.Address,
-		Signer: func(address common.Address, tx *types.Transaction) (*types.Transaction, error) {
-			if address != account.Address {
-				return nil, errors.New("not authorized to sign this account")
-			}
-			signedTx, err := hdwallet.SignTxEIP155(*account, tx, chainID)
-			if err != nil {
-				return nil, err
-			}
-
-			return signedTx, nil
-		},
-	}, nil
-}
-
 func (b *PluginBackend) getBaseData(client *ethclient.Client, fromAddress common.Address, data *framework.FieldData, addressField string) (*TransactionParams, error) {
 	var err error
 	var address common.Address
@@ -598,159 +580,84 @@ func (b *PluginBackend) getBaseData(client *ethclient.Client, fromAddress common
 
 }
 
-func (b *PluginBackend) pathTransfer(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+// func (b *PluginBackend) pathDeploy(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+// 	chainName := data.Get("chain").(string)
+// 	chain, err := b.configured_chain(ctx, req, chainName)
+// 	if err != nil {
+// 		return nil, err
+// 	}
 
-	chainName := data.Get("chain").(string)
-	chain, err := b.configured_chain(ctx, req, chainName)
-	if err != nil {
-		return nil, err
-	}
-	
-	var txDataToSign []byte
-	
-	name := data.Get("name").(string)
+// 	name := data.Get("name").(string)
 
-	client, err := ethclient.Dial(chain.getRPCURL())
-	if err != nil {
-		return nil, fmt.Errorf("cannot connect to " + chain.getRPCURL())
-	}
+// 	client, err := ethclient.Dial(chain.getRPCURL())
+// 	if err != nil {
+// 		return nil, fmt.Errorf("cannot connect to " + chain.getRPCURL())
+// 	}
 
-	accountJSON, err := readAccount(ctx, req, name)
-	if err != nil {
-		return nil, err
-	}
+// 	accountJSON, err := readAccount(ctx, req, name)
+// 	if err != nil {
+// 		return nil, err
+// 	}
 
-	wallet, account, err := getWalletAndAccount(*accountJSON)
-	if err != nil {
-		return nil, err
-	}
+// 	wallet, account, err := getWalletAndAccount(*accountJSON)
+// 	if err != nil {
+// 		return nil, err
+// 	}
 
-	transactionParams, err := b.getData(client, account.Address, data)
+// 	transactionParams, err := b.getBaseData(client, account.Address, data, Empty)
 
-	if err != nil {
-		return nil, err
-	}
-	accountJSON.Inclusions = append(accountJSON.Inclusions, chain.Inclusions...)
-	accountJSON.Inclusions = append(accountJSON.Inclusions, accountJSON.Inclusions...)
-	if len(accountJSON.Inclusions) > 0 && !util.Contains(accountJSON.Inclusions, transactionParams.Address.Hex()) {
-		return nil, fmt.Errorf("%s violates the inclusions %+v", transactionParams.Address.Hex(), accountJSON.Inclusions)
-	}
-	err = chain.ValidAddress(transactionParams.Address)
-	if err != nil {
-		return nil, err
-	}
-	err = accountJSON.ValidAddress(transactionParams.Address)
-	if err != nil {
-		return nil, err
-	}
+// 	if err != nil {
+// 		return nil, err
+// 	}
 
-	tx := types.NewTransaction(transactionParams.Nonce, *transactionParams.Address, transactionParams.Amount, transactionParams.GasLimit, transactionParams.GasPrice, txDataToSign)
+// 	abiData := data.Get("abi").(string)
+// 	parsed, err := abi.JSON(strings.NewReader(abiData))
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	binData := data.Get("bin").(string)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	binRaw := common.FromHex(binData)
 
-	bigChainID, _ := new(big.Int).SetString(chain.ChainID, 10)
-	signedTx, err := wallet.SignTxEIP155(*account, tx, bigChainID)
-	if err != nil {
-		return nil, err
-	}
-	err = client.SendTransaction(context.Background(), signedTx)
-	if err != nil {
-		return nil, err
-	}
+// 	bigChainID, _ := new(big.Int).SetString(chain.ChainID, 10)
+// 	transactOpts, err := b.NewWalletTransactor(bigChainID, wallet, account)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	gasLimitIn := util.ValidNumber(data.Get("gas_limit").(string))
+// 	gasLimit := gasLimitIn.Uint64()
 
-	var signedTxBuff bytes.Buffer
-	signedTx.EncodeRLP(&signedTxBuff)
+// 	transactOpts.GasPrice = transactionParams.GasPrice
+// 	transactOpts.Nonce = big.NewInt(int64(transactionParams.Nonce))
+// 	transactOpts.Value = big.NewInt(0) // in wei
 
-	return &logical.Response{
-		Data: map[string]interface{}{
-			"transaction_hash":   signedTx.Hash().Hex(),
-			"signed_transaction": hexutil.Encode(signedTxBuff.Bytes()),
-			"from":               account.Address.Hex(),
-			"to":                 transactionParams.Address.String(),
-			"amount":             transactionParams.Amount.String(),
-			"nonce":              strconv.FormatUint(transactionParams.Nonce, 10),
-			"gas_price":          transactionParams.GasPrice.String(),
-			"gas_limit":          strconv.FormatUint(transactionParams.GasLimit, 10),
-		},
-	}, nil
-}
+// 	gasLimit, err = util.EstimateGas(transactOpts, parsed, binRaw, client)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	transactOpts.GasLimit = gasLimit
+// 	contractAddress, tx, _, err := bind.DeployContract(transactOpts, parsed, binRaw, client)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	//	b.LogTx(tx)
+// 	var signedTxBuff bytes.Buffer
+// 	tx.EncodeRLP(&signedTxBuff)
 
-func (b *PluginBackend) pathDeploy(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-	chainName := data.Get("chain").(string)
-	chain, err := b.configured_chain(ctx, req, chainName)
-	if err != nil {
-		return nil, err
-	}
-
-	name := data.Get("name").(string)
-
-	client, err := ethclient.Dial(chain.getRPCURL())
-	if err != nil {
-		return nil, fmt.Errorf("cannot connect to " + chain.getRPCURL())
-	}
-
-	accountJSON, err := readAccount(ctx, req, name)
-	if err != nil {
-		return nil, err
-	}
-
-	wallet, account, err := getWalletAndAccount(*accountJSON)
-	if err != nil {
-		return nil, err
-	}
-
-	transactionParams, err := b.getBaseData(client, account.Address, data, Empty)
-
-	if err != nil {
-		return nil, err
-	}
-
-	abiData := data.Get("abi").(string)
-	parsed, err := abi.JSON(strings.NewReader(abiData))
-	if err != nil {
-		return nil, err
-	}
-	binData := data.Get("bin").(string)
-	if err != nil {
-		return nil, err
-	}
-	binRaw := common.FromHex(binData)
-
-	bigChainID, _ := new(big.Int).SetString(chain.ChainID, 10)
-	transactOpts, err := b.NewWalletTransactor(bigChainID, wallet, account)
-	if err != nil {
-		return nil, err
-	}
-	gasLimitIn := util.ValidNumber(data.Get("gas_limit").(string))
-	gasLimit := gasLimitIn.Uint64()
-
-	transactOpts.GasPrice = transactionParams.GasPrice
-	transactOpts.Nonce = big.NewInt(int64(transactionParams.Nonce))
-	transactOpts.Value = big.NewInt(0) // in wei
-
-	gasLimit, err = util.EstimateGas(transactOpts, parsed, binRaw, client)
-	if err != nil {
-		return nil, err
-	}
-	transactOpts.GasLimit = gasLimit
-	contractAddress, tx, _, err := bind.DeployContract(transactOpts, parsed, binRaw, client)
-	if err != nil {
-		return nil, err
-	}
-	//	b.LogTx(tx)
-	var signedTxBuff bytes.Buffer
-	tx.EncodeRLP(&signedTxBuff)
-
-	return &logical.Response{
-		Data: map[string]interface{}{
-			"transaction_hash":   tx.Hash().Hex(),
-			"signed_transaction": hexutil.Encode(signedTxBuff.Bytes()),
-			"from":               account.Address.Hex(),
-			"contract":           contractAddress.Hex(),
-			"nonce":              transactOpts.Nonce.String(),
-			"gas_price":          transactOpts.GasPrice.String(),
-			"gas_limit":          strconv.FormatUint(gasLimit, 10),
-		},
-	}, nil
-}
+// 	return &logical.Response{
+// 		Data: map[string]interface{}{
+// 			"transaction_hash":   tx.Hash().Hex(),
+// 			"signed_transaction": hexutil.Encode(signedTxBuff.Bytes()),
+// 			"from":               account.Address.Hex(),
+// 			"contract":           contractAddress.Hex(),
+// 			"nonce":              transactOpts.Nonce.String(),
+// 			"gas_price":          transactOpts.GasPrice.String(),
+// 			"gas_limit":          strconv.FormatUint(gasLimit, 10),
+// 		},
+// 	}, nil
+// }
 
 func (b *PluginBackend) pathSignTx(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 	chainName := data.Get("chain").(string)
@@ -826,43 +733,6 @@ func (b *PluginBackend) pathSignTx(ctx context.Context, req *logical.Request, da
 			"gas_price":          transactionParams.GasPrice.String(),
 			"gas_limit":          strconv.FormatUint(transactionParams.GasLimit, 10),
 			"chain_id": 		  chain.ChainID,
-			"rpc_url":			  chain.RPC,
-		},
-	}, nil
-
-}
-
-func (b *PluginBackend) pathReadBalance(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-	chainName := data.Get("chain").(string)
-	chain, err := b.configured_chain(ctx, req, chainName)
-	if err != nil {
-		return nil, err
-	}
-
-	name := data.Get("name").(string)
-	accountJSON, err := readAccount(ctx, req, name)
-	if err != nil {
-		return nil, err
-	}
-
-	_, account, err := getWalletAndAccount(*accountJSON)
-	if err != nil {
-		return nil, err
-	}
-
-	client, err := ethclient.Dial(chain.getRPCURL())
-	if err != nil {
-		return nil, err
-	}
-	balance, err := client.BalanceAt(context.Background(), account.Address, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return &logical.Response{
-		Data: map[string]interface{}{
-			"address": account.Address.Hex(),
-			"balance": balance.String(),
 		},
 	}, nil
 

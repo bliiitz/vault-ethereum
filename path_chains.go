@@ -80,11 +80,6 @@ func chainPaths(b *PluginBackend) []*framework.Path {
 					Default:     "8545",
 					Description: "The chainId of the Ethereum network",
 				},
-				"rpc_url": {
-					Type:        framework.TypeString,
-					Default:     "http://localhost:8545",
-					Description: "The RPC address of the Ethereum network",
-				},
 				"inclusions": {
 					Type:        framework.TypeCommaStringSlice,
 					Description: "Only these accounts may be transaction with",
