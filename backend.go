@@ -16,23 +16,20 @@ package main
 
 import (
 	"context"
-	"fmt"
+	"sync"
 
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
 )
 
-const (
-	// Symbol is the lowercase crypto token symbol
-	Symbol string = "eth"
-)
+type vaultEthereumBackend struct {
+	*framework.Backend
+	lock sync.RWMutex
+}
 
 // Factory returns the backend
 func Factory(ctx context.Context, conf *logical.BackendConfig) (logical.Backend, error) {
-	b, err := Backend(conf)
-	if err != nil {
-		return nil, err
-	}
+	b := backend()
 	if err := b.Setup(ctx, conf); err != nil {
 		return nil, err
 	}
@@ -42,31 +39,23 @@ func Factory(ctx context.Context, conf *logical.BackendConfig) (logical.Backend,
 // FactoryType returns the factory
 func FactoryType(backendType logical.BackendType) logical.Factory {
 	return func(ctx context.Context, conf *logical.BackendConfig) (logical.Backend, error) {
-		b, err := Backend(conf)
-		if err != nil {
-			return nil, err
-		}
+		b := backend()
 		b.BackendType = backendType
-		if err = b.Setup(ctx, conf); err != nil {
+		if err := b.Setup(ctx, conf); err != nil {
 			return nil, err
 		}
 		return b, nil
 	}
 }
 
-// Backend returns the backend
-func Backend(conf *logical.BackendConfig) (*PluginBackend, error) {
-	var b PluginBackend
+func backend() *vaultEthereumBackend {
+	var b vaultEthereumBackend
 	b.Backend = &framework.Backend{
 		Help: "",
 		Paths: framework.PathAppend(
-			chainPaths(&b),
 			accountPaths(&b),
 		),
 		PathsSpecial: &logical.Paths{
-			Unauthenticated: []string{
-				"test",
-			},
 			SealWrapStorage: []string{
 				"accounts/",
 			},
@@ -74,12 +63,7 @@ func Backend(conf *logical.BackendConfig) (*PluginBackend, error) {
 		Secrets:     []*framework.Secret{},
 		BackendType: logical.TypeLogical,
 	}
-	return &b, nil
-}
-
-// PluginBackend implements the Backend for this plugin
-type PluginBackend struct {
-	*framework.Backend
+	return &b
 }
 
 // QualifiedPath prepends the token symbol to the path
@@ -87,13 +71,8 @@ func QualifiedPath(subpath string) string {
 	return subpath
 }
 
-// ContractPath prepends the token symbol to the path
-func ContractPath(contract, method string) string {
-	return fmt.Sprintf("%s/%s/%s", QualifiedPath("accounts/"+framework.GenericNameRegex("name")), contract, method)
-}
-
 // SealWrappedPaths returns the paths that are seal wrapped
-func SealWrappedPaths(b *PluginBackend) []string {
+func SealWrappedPaths(b *vaultEthereumBackend) []string {
 	return []string{
 		QualifiedPath("accounts/"),
 	}

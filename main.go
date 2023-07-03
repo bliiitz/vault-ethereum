@@ -15,14 +15,16 @@
 package main
 
 import (
-	"log"
 	"os"
 
+	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault/api"
 	"github.com/hashicorp/vault/sdk/plugin"
 )
 
 func main() {
+	logger := hclog.New(&hclog.LoggerOptions{})
+
 	apiClientMeta := &api.PluginAPIClientMeta{}
 	flags := apiClientMeta.FlagSet()
 	flags.Parse(os.Args[1:]) // Ignore command, strictly parse flags
@@ -36,7 +38,7 @@ func main() {
 	})
 
 	if err != nil {
-		log.Println(err)
+		logger.Error("plugin shutting down", "error", err)
 		os.Exit(1)
 	}
 }

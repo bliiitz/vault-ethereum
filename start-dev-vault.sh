@@ -17,4 +17,4 @@ read -r -d '' JSON_CONFIG << EOM
 EOM
 
 echo ${JSON_CONFIG} > ./local/vault.json
-vault server -dev -config=$PLUGIN_PATH/vault.json
+vault server -dev -dev-root-token-id=root -config=$PLUGIN_PATH/vault.json

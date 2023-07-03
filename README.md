@@ -1,94 +1,93 @@
-# Vault Ethereum Plugin v0.3.0
+# Vault Ethereum Wallet Plugin
 
-The first incarnation of the `vault-ethereum` plugin was an exercise in [experimenting with an idea](https://www.hashicorp.com/resources/vault-platform-enterprise-blockchain) and [proving a point](https://immutability.io/). 2 years later, I feel both ends were acheived.
+The Vault Ethereum Wallet Plugin is a HashiCorp Vault plugin that provides secure management and operations for a software wallet on the Ethereum blockchain. It leverages HashiCorp Vault's robust security features to protect private keys and provide cryptographic signing capabilities.
 
-Having had several occasions to take this PoC to production with companies in the financial and blockchain communities [(plug for Immutability, LLC's custom development!)](mailto:jeff@immutability.io) I've decided to release an upgrade that tries to make the development experience better. I've also restricted the surface area of the plugin to a minimum.
+## Features
 
-Excepting the `convert` API, which I keep for entertainment value.
+- Generation and management of Ethereum accounts
+- Importing existing Ethereum accounts using mnemonic phrases and derivation paths
+- Secure storage of private keys using HashiCorp Vault's key management capabilities
+- Cryptographic signing of Ethereum transactions
+- Support for multiple Ethereum chains
 
-## Testing - in one terminal...
+## Installation
 
-```sh
+1. Clone the repository:
 
-$ cd $GOPATH/src/github.com/immutability-io/vault-ethereum
-$ make docker-build
-$ make run
+   ```shell
+   git clone https://github.com/bliiitz/vault-ethereum.git
+   ```
 
-```
+2. Build the plugin binary:
 
-Then, **open a different terminal**...
+   ```shell
+   ./build.sh
+   ```
 
-```sh
+3. Start dev vault
+   ```shell
+   ./start-dev-vault.sh
+   ```
 
-$ cd $GOPATH/src/github.com/immutability-io/vault-ethereum/docker
+4. Deploy plugin:
+    ```shell
+   ./deploy-local.sh
+   ```
+   
 
-# Authenticate
-$ source ./local-test.sh auth
-$ ./demo.sh > README.md
+## Usage
 
-```
+Once the Vault Ethereum Cold Wallet Plugin is installed and enabled, you can interact with it using the Vault CLI or the Vault API. The following are some example operations:
 
-## View the demo
+- **Create a new Ethereum account:**
 
-If everything worked... And you have run the command above, your demo is had by viewing the results: 
+  ```shell
+  vault write vault-ethereum/accounts/my-wallet
+  ```
 
-```sh
-$ cat ./README.md
-```
+- **Import an existing Ethereum account:**
 
-If everything didn't work, tell me why.
+  ```shell
+  vault write vault-ethereum/accounts/my-wallet \
+    mnemonic="..." \
+    derivation_path_index=0
+  ```
 
-## What is the API?
+- **Sign a message:**
 
-The best way to understand the API is to use the `path-help` command. For example:
+  ```shell
+  vault write vault-ethereum/accounts/my-wallet/sign message="Hello, Ethereum!"
+  ```
 
-```sh
-$ vault path-help vault-ethereum/accounts/bob/deploy                                                                [±new-version ●]
-Request:        accounts/bob/deploy
-Matching Route: ^accounts/(?P<name>\w(([\w-.]+)?\w)?)/deploy$
+- **Sign and send a transaction:**
 
-Deploy a smart contract from an account.
+  ```shell
+  vault write vault-ethereum/accounts/my-wallet/sign-tx \
+    to="0x123..." \
+    value="1000000000000000000" \
+    data="..." \
+    chain="1" \
+    gas_price="20000000000" \
+    gas_limit="21000"
+  ```
 
-## PARAMETERS
+For more detailed information on available operations and usage examples, please refer to the [Vault Ethereum Cold Wallet Plugin Documentation](https://your-docs-url.com).
 
-    abi (string)
+## Security
 
-        The contract ABI.
+The Vault Ethereum Cold Wallet Plugin ensures the security of private keys by leveraging HashiCorp Vault's robust security features, including:
 
-    address (string)
+- Encryption of private keys at rest
+- Protection of private keys with access control policies and authentication mechanisms
+- Auditing and logging of all operations performed on the plugin
+- Integration with HashiCorp Vault's High Availability and Disaster Recovery capabilities
 
-        <no description>
+Please refer to the [Vault Documentation](https://www.vaultproject.io/docs) for more information on securing and configuring HashiCorp Vault.
 
-    bin (string)
+## Contributing
 
-        The compiled smart contract.
+Contributions to the Vault Ethereum Cold Wallet Plugin are welcome! If you find any issues or have suggestions for new features, please open an issue or submit a pull request. Make sure to follow the [Contributing Guidelines](CONTRIBUTING.md) when making contributions.
 
-    gas_limit (string)
+## License
 
-        The gas limit for the transaction - defaults to 0 meaning estimate.
-
-    name (string)
-
-        <no description>
-
-    version (string)
-
-        The smart contract version.
-
-## DESCRIPTION
-
-Deploy a smart contract to the network.
-```
-
-## I still need help
-
-[Please reach out to me](mailto:jeff@immutability.io). 
-
-## Tip
-
-Supporting OSS is very hard. 
-
-This is my ETH address. The private keys are managed by this plugin: 
-
-`0x68350c4c58eE921B30A4B1230BF6B14441B46981`
-
+The Vault Ethereum Cold Wallet Plugin is licensed under the [MIT License](LICENSE). Please see the [LICENSE](LICENSE) file for more information.
