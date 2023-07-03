@@ -48,6 +48,8 @@ jobs:
           scope: '@bliiitz'
       - run: npm ci
         working-directory: ./packages/ethers-signer
+      - run: tsc
+        working-directory: ./packages/ethers-signer
       - run: npm publish
         working-directory: ./packages/ethers-signer
         env:
