@@ -50,7 +50,7 @@ jobs:
         working-directory: ./packages/ethers-signer
       - run: tsc
         working-directory: ./packages/ethers-signer
-      - run: npm publish
+      - run: npm publish --access=public
         working-directory: ./packages/ethers-signer
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
