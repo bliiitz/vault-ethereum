@@ -47,6 +47,8 @@ jobs:
           # Defaults to the user or organization that owns the workflow file
           scope: '@bliiitz'
       - run: npm ci
+        working-directory: ./packages/ethers-signer
       - run: npm publish
+        working-directory: ./packages/ethers-signer
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
