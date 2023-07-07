@@ -154,6 +154,9 @@ export class VaultEthereumSigner extends Signer implements TypedDataSigner {
         async signMessage(message: Bytes | string): Promise<string> {
             let signTxRequest = await fetch(`${this.config.endpoint}/v1/${this.config.pluginPath}/accounts/${this.config.walletId}/sign`, {
                 method: "POST",
+                headers: {
+                    Authorization: `Bearer ${this.vaultToken}`
+                },
                 body: JSON.stringify({
                     message,
                 })
