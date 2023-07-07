@@ -18,7 +18,7 @@ Before using the Vault Ethereum Wallet Signer, ensure that you have the followin
 ## Installation
 
 ```shell
-npm install @your-org/vault-ethereum-wallet-signer
+npm install @bliiitz/vault-ethereum-wallet-signer
 ```
 
 ## Usage
@@ -27,7 +27,7 @@ npm install @your-org/vault-ethereum-wallet-signer
 
    ```javascript
    const ethers = require('ethers');
-   const { VaultColdWalletSigner } = require('@your-org/vault-eth-cold-wallet-signer');
+   const { VaultColdWalletSigner } = require('@bliiitz/vault-eth-cold-wallet-signer');
    ```
 
 2. Create a provider instance:

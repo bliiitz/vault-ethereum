@@ -48,7 +48,7 @@ jobs:
           scope: '@bliiitz'
       - run: npm ci
         working-directory: ./packages/ethers-signer
-      - run: tsc
+      - run: npx tsc 
         working-directory: ./packages/ethers-signer
       - run: npm publish --access=public
         working-directory: ./packages/ethers-signer
