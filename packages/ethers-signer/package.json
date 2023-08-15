@@ -1,6 +1,6 @@
 {
   "name": "@bliiitz/vault-ethereum-ethers-signer",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Ethers signer interface to use vault-ethereum plugin",
   "main": "index.js",
   "private": false,
