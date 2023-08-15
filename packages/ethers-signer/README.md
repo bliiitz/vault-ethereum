@@ -27,7 +27,7 @@ npm install @bliiitz/vault-ethereum-wallet-signer
 
    ```javascript
    const ethers = require('ethers');
-   const { VaultColdWalletSigner } = require('@bliiitz/vault-eth-cold-wallet-signer');
+   const { VaultEthereumSigner } = require('@bliiitz/vault-ethereum-wallet-signer');
    ```
 
 2. Create a provider instance:
@@ -36,10 +36,10 @@ npm install @bliiitz/vault-ethereum-wallet-signer
    const provider = new ethers.providers.JsonRpcProvider('https://your-rpc-url');
    ```
 
-3. Initialize the signer with the Vault Ethereum Cold Wallet Plugin details:
+3. Initialize the signer with the Vault Ethereum  Wallet Plugin details:
 
    ```javascript
-   const signer = new VaultColdWalletSigner({
+   const signer = new VaultEthereumSigner({
      accountId: 'my-wallet',
      vaultUrl: 'https://your-vault-url',
      vaultToken: 'your-vault-token',

@@ -50,7 +50,9 @@ jobs:
         working-directory: ./packages/ethers-signer
       - run: npx tsc 
         working-directory: ./packages/ethers-signer
-      - run: npm publish --access=public
+      - run: cp package.json dist/package.json && cp package-lock.json dist/package-lock.json && cp README.md dist/README.md
         working-directory: ./packages/ethers-signer
+      - run: npm publish --access=public
+        working-directory: ./packages/ethers-signer/dist
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
