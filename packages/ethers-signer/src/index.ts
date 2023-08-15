@@ -6,7 +6,7 @@ import { hashMessage, _TypedDataEncoder } from "@ethersproject/hash";
 import { defineReadOnly, resolveProperties } from "@ethersproject/properties";
 import { recoverAddress } from "@ethersproject/transactions";
 import { Logger } from "@ethersproject/logger";
-import { VaultEthereumAuthResponse, VaultEthereumConfig, VaultEthereumKubernetesAuth, VaultEthereumTokenAuth } from "./interfaces";
+import { VaultEthereumAccountConfig, VaultEthereumAuthResponse, VaultEthereumConfig, VaultEthereumKubernetesAuth, VaultEthereumTokenAuth } from "./interfaces";
 import * as fs from 'fs'
 
 
@@ -18,12 +18,15 @@ export class VaultEthereumSigner extends Signer implements TypedDataSigner {
     readonly address: string;
     public provider: Provider;
 
+    readonly account: string
     readonly config: VaultEthereumConfig
+    readonly authMethod: string
+    readonly auth: VaultEthereumTokenAuth | VaultEthereumKubernetesAuth
 
     private authStatus: VaultEthereumAuthResponse;
     private vaultToken: string
 
-    constructor(config: VaultEthereumConfig, provider?: Provider) {
+    constructor(account: string, config: VaultEthereumConfig, provider?: Provider) {
         super();
 
         /* istanbul ignore if */
@@ -31,69 +34,83 @@ export class VaultEthereumSigner extends Signer implements TypedDataSigner {
             logger.throwArgumentError("invalid provider", "provider", provider);
         }
 
-        if(!config.walletId)
+        if(!account)
             throw Error("No walletId specified")
 
-        const vaultConfig: VaultEthereumConfig = {
+        const configuration: VaultEthereumConfig = {
             endpoint: config.endpoint || "http://localhost:8200",
-            pluginPath: config.pluginPath || "vault-ethereum",
-            kubePath: config.kubePath || "kubernetes",
-            walletId: config.walletId,
+            pluginPath: config.pluginPath || "vault-ethereum"
         }
         
-        defineReadOnly(this, "config", vaultConfig);
+        defineReadOnly(this, "account", account);
+        defineReadOnly(this, "config", configuration);
         this.provider = provider
     }
 
-    async authenticate(method: string, config: any) {
+    async authenticate(method: string, auth: VaultEthereumTokenAuth | VaultEthereumKubernetesAuth) {
+        
+        this.vaultToken = await VaultEthereumSigner.getTokenFromAuthConfig(method, this.config, auth)
+        let accountRequest = await fetch(`${this.config.endpoint}/v1/${this.config.pluginPath}/accounts/${this.account}`, {
+            headers: {
+                Authorization: `Bearer ${this.vaultToken}`
+            }
+        })
+
+        let account: {data: {address: string}} = await accountRequest.json()
+        defineReadOnly(this, "authMethod", method);
+        defineReadOnly(this, "auth", auth);
+        defineReadOnly(this, "address", account.data.address);
+    }
+
+    static async getTokenFromAuthConfig(method: string, config: VaultEthereumConfig, auth: VaultEthereumTokenAuth | VaultEthereumKubernetesAuth): Promise<string> {
+        let vaultToken: string
         let authConfig: VaultEthereumTokenAuth | VaultEthereumKubernetesAuth
         switch(method) {
             case "token":
-                authConfig = <VaultEthereumTokenAuth>config
-                this.vaultToken = authConfig.token
+                authConfig = <VaultEthereumTokenAuth>auth
+                vaultToken = authConfig.token
                 break
             case "kubernetes":
-                authConfig = <VaultEthereumKubernetesAuth>config
+                authConfig = <VaultEthereumKubernetesAuth>auth
                 let jwt= fs.readFileSync('/var/run/secrets/kubernetes.io/serviceaccount/token').toString()
                 let role = authConfig.role
 
-                let loginRequest = await fetch(`${this.config.endpoint}/v1/auth/${this.config.kubePath}/login`, {
+                let loginRequest = await fetch(`${config.endpoint}/v1/auth/${authConfig.kubeAuthPluginPath}/login`, {
                     method: "POST",
                     body: JSON.stringify({ jwt, role })
                 })
 
                 let response = await loginRequest.json()
-                this.authStatus = response.auth
-                this.vaultToken = this.authStatus.client_token
+                let authStatus = response.auth
+                vaultToken = authStatus.client_token
                 break
 
             default:
                 throw Error("Vault authentication method does't exists")
         }
 
-        if(!this.vaultToken)
+        if(!vaultToken)
             throw Error("Vault authentication method failed")
 
-        let accountRequest = await fetch(`${this.config.endpoint}/v1/${this.config.pluginPath}/accounts/${this.config.walletId}`, {
-            headers: {
-                Authorization: `Bearer ${this.vaultToken}`
-            }
-        })
-        let account: {data: {address: string}} = await accountRequest.json()
-        defineReadOnly(this, "address", account.data.address);
-                
+        return vaultToken
     }
 
-    async listVaultsAccounts(path: string = ""): Promise<string[]> {
-        let listAccounts = await fetch(`${this.config.endpoint}/v1/${this.config.pluginPath}/accounts/${path}`, {
+    static async listVaultsAccounts(
+        authMethod: string,
+        config: VaultEthereumConfig, 
+        auth: VaultEthereumTokenAuth | VaultEthereumKubernetesAuth, 
+        accountsPath: string = ""
+    ): Promise<string[]> {
+        let token = await VaultEthereumSigner.getTokenFromAuthConfig(authMethod, config, auth)
+        let listAccounts = await fetch(`${config.endpoint}/v1/${config.pluginPath}/accounts/${accountsPath}`, {
             method: "LIST",
             headers: {
-                Authorization: `Bearer ${this.vaultToken}`
+                Authorization: `Bearer ${token}`
             }
         })
 
-        let accounts: string[] = await listAccounts.json()
-        return accounts;
+        let result: { data: {keys: string[]} } = await listAccounts.json()
+        return result.data.keys;
     }
     
     async getAddress(): Promise<string> {
@@ -103,15 +120,10 @@ export class VaultEthereumSigner extends Signer implements TypedDataSigner {
         return this.address;
     }
 
-    connectAccount(account: string): VaultEthereumSigner {
-        let config = {
-            endpoint: this.config.endpoint,
-            pluginPath: this.config.pluginPath,
-            kubePath: this.config.kubePath,
-            walletId: account,
-        }
-
-        return new VaultEthereumSigner(config, this.provider)
+    async connectAccount(account: string): Promise<VaultEthereumSigner> {
+        let signer = new VaultEthereumSigner(account, this.config, this.provider)
+        await signer.authenticate(this.authMethod, this.auth)
+        return signer
     }
 
     connect(provider: Provider): VaultEthereumSigner {
@@ -122,7 +134,7 @@ export class VaultEthereumSigner extends Signer implements TypedDataSigner {
     async signTransaction(transaction: TransactionRequest): Promise<string> {
         return resolveProperties(transaction).then(async (tx) => {
             if (tx.from != null) {
-                if (getAddress(tx.from) !== this.address) {
+                if (tx.from.toLowerCase() !== this.address.toLowerCase()) {
                     logger.throwArgumentError("transaction from address mismatch", "transaction.from", transaction.from);
                 }
                 delete tx.from;
@@ -164,7 +176,7 @@ export class VaultEthereumSigner extends Signer implements TypedDataSigner {
                 }
             }
             
-            let signTxRequest = await fetch(`${this.config.endpoint}/v1/${this.config.pluginPath}/accounts/${this.config.walletId}/${txEndpoint}`, {
+            let signTxRequest = await fetch(`${this.config.endpoint}/v1/${this.config.pluginPath}/accounts/${this.account}/${txEndpoint}`, {
                 method: "POST",
                 headers: {
                     Authorization: `Bearer ${this.vaultToken}`
@@ -177,7 +189,7 @@ export class VaultEthereumSigner extends Signer implements TypedDataSigner {
     }
 
     async signMessage(message: Bytes | string): Promise<string> {
-        let signTxRequest = await fetch(`${this.config.endpoint}/v1/${this.config.pluginPath}/accounts/${this.config.walletId}/sign`, {
+        let signTxRequest = await fetch(`${this.config.endpoint}/v1/${this.config.pluginPath}/accounts/${this.account}/sign`, {
             method: "POST",
             headers: {
                 Authorization: `Bearer ${this.vaultToken}`

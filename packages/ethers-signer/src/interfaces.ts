@@ -1,9 +1,11 @@
 
 export interface VaultEthereumConfig {
     endpoint: string
-    walletId: string
     pluginPath?: string
-    kubePath?: string
+}
+
+export interface VaultEthereumAccountConfig extends VaultEthereumConfig {
+    walletId: string
 }
 
 export interface VaultEthereumTokenAuth {
@@ -11,7 +13,9 @@ export interface VaultEthereumTokenAuth {
 }
 
 export interface VaultEthereumKubernetesAuth {
-    role: string, 
+    
+    role: string,
+    kubeAuthPluginPath?: string
 }
 
 export interface VaultEthereumAuthResponse {
